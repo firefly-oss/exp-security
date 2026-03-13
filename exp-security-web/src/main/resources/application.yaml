@@ -1,0 +1,77 @@
+spring:
+  application:
+    name: exp-security
+    version: 1.0.0
+    description: Experience layer API for security-related user journeys
+    team:
+      name: Firefly Software Solutions Inc
+      email: dev@getfirefly.io
+  threads:
+    virtual:
+      enabled: true
+
+springdoc:
+  packages-to-scan: com.firefly.experience.security.web.controllers
+  paths-to-match: /api/**
+  swagger-ui:
+    path: /swagger-ui.html
+    tagsSorter: alpha
+    operationsSorter: method
+    docExpansion: none
+    filter: true
+
+server:
+  port: ${SERVER_PORT:8101}
+  address: ${SERVER_ADDRESS:localhost}
+  shutdown: graceful
+
+api-configuration:
+  domain-platform:
+    security-center:
+      base-path: ${SECURITY_CENTER_URL:http://localhost:8030}
+    common-sca:
+      base-path: ${SCA_URL:http://localhost:8041}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: when-authorized
+      probes:
+        enabled: true
+  health:
+    livenessState:
+      enabled: true
+    readinessState:
+      enabled: true
+
+logging:
+  level:
+    root: INFO
+    com.firefly.experience.security: DEBUG
+
+---
+spring:
+  config:
+    activate:
+      on-profile: dev
+logging:
+  level:
+    com.firefly: DEBUG
+
+---
+spring:
+  config:
+    activate:
+      on-profile: pro
+logging:
+  level:
+    com.firefly: INFO
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false
