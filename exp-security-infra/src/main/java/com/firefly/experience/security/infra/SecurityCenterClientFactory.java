@@ -1,7 +1,7 @@
 package com.firefly.experience.security.infra;
 
-import com.firefly.security.center.sdk.api.AuthenticationApi;
-import com.firefly.security.center.sdk.api.SessionsApi;
+import com.firefly.security.center.sdk.api.AuthenticationControllerApi;
+import com.firefly.security.center.sdk.api.SessionControllerApi;
 import com.firefly.security.center.sdk.invoker.ApiClient;
 import org.springframework.context.annotation.Bean;
 import org.springframework.stereotype.Component;
@@ -12,8 +12,8 @@ import org.springframework.stereotype.Component;
  *
  * <p>Current SDK ({@code domain-core-security-center-sdk}) exposes:
  * <ul>
- *   <li>{@link AuthenticationApi} — login, token refresh, logout, introspect</li>
- *   <li>{@link SessionsApi} — active sessions, close session, session validation</li>
+ *   <li>{@link AuthenticationControllerApi} — login, token refresh, logout, introspect</li>
+ *   <li>{@link SessionControllerApi} — active sessions, close session, session validation</li>
  * </ul>
  *
  * <p>TODO: Once the security-center OpenAPI spec is extended with Activity Log and
@@ -36,22 +36,22 @@ public class SecurityCenterClientFactory {
     }
 
     /**
-     * Provides the {@link AuthenticationApi} bean for login, refresh, and logout operations.
+     * Provides the {@link AuthenticationControllerApi} bean for login, refresh, and logout operations.
      *
-     * @return a ready-to-use AuthenticationApi instance
+     * @return a ready-to-use AuthenticationControllerApi instance
      */
     @Bean
-    public AuthenticationApi authenticationApi() {
-        return new AuthenticationApi(apiClient);
+    public AuthenticationControllerApi authenticationApi() {
+        return new AuthenticationControllerApi(apiClient);
     }
 
     /**
-     * Provides the {@link SessionsApi} bean for active session management and session closure.
+     * Provides the {@link SessionControllerApi} bean for active session management and session closure.
      *
-     * @return a ready-to-use SessionsApi instance
+     * @return a ready-to-use SessionControllerApi instance
      */
     @Bean
-    public SessionsApi sessionsApi() {
-        return new SessionsApi(apiClient);
+    public SessionControllerApi sessionsApi() {
+        return new SessionControllerApi(apiClient);
     }
 }

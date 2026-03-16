@@ -14,10 +14,10 @@ import com.firefly.experience.security.core.queries.ScaChallengeDTO;
 import com.firefly.experience.security.core.queries.ScaVerificationResultDTO;
 import com.firefly.experience.security.core.queries.SessionDTO;
 import com.firefly.experience.security.core.services.SecurityService;
-import com.firefly.security.center.sdk.api.AuthenticationApi;
-import com.firefly.security.center.sdk.api.SessionsApi;
+import com.firefly.security.center.sdk.api.AuthenticationControllerApi;
+import com.firefly.security.center.sdk.api.SessionControllerApi;
+import com.firefly.security.center.sdk.model.AuthLogoutRequest;
 import com.firefly.security.center.sdk.model.LoginRequest;
-import com.firefly.security.center.sdk.model.LogoutRequest;
 import com.firefly.security.center.sdk.model.RefreshRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -31,7 +31,7 @@ import java.util.UUID;
 /**
  * Implementation of {@link SecurityService} that delegates to the Security Center SDK.
  *
- * <p>Currently backed by {@link AuthenticationApi} and {@link SessionsApi} from
+ * <p>Currently backed by {@link AuthenticationControllerApi} and {@link SessionControllerApi} from
  * {@code domain-core-security-center-sdk}. Methods that require APIs not yet available
  * ({@code ActivityLogApi}, {@code PasswordApi}, {@code ScaOperationsApi}) signal a
  * {@link NotImplementedException} until the corresponding SDKs are generated.
@@ -64,8 +64,8 @@ public class SecurityServiceImpl implements SecurityService {
     /** Error code used when activity log retrieval is not yet supported. */
     public static final String ERR_ACTIVITY_LOG = "activity-log";
 
-    private final AuthenticationApi authenticationApi;
-    private final SessionsApi sessionsApi;
+    private final AuthenticationControllerApi authenticationApi;
+    private final SessionControllerApi sessionsApi;
     private final SecurityMapper mapper;
 
     @Override
@@ -74,7 +74,7 @@ public class SecurityServiceImpl implements SecurityService {
         LoginRequest request = new LoginRequest()
                 .username(command.getUsername())
                 .password(command.getPassword());
-        return authenticationApi.login(request)
+        return authenticationApi.login(request, UUID.randomUUID().toString())
                 .map(mapper::toAuthTokenDTO);
     }
 
@@ -89,15 +89,15 @@ public class SecurityServiceImpl implements SecurityService {
         log.debug("Refreshing token");
         RefreshRequest request = new RefreshRequest()
                 .refreshToken(command.getRefreshToken());
-        return authenticationApi.refresh(request)
+        return authenticationApi.refresh(request, UUID.randomUUID().toString())
                 .map(mapper::toAuthTokenDTO);
     }
 
     @Override
     public Mono<Void> logout() {
         log.debug("Processing logout");
-        // LogoutRequest tokens will be injected by the gateway/security context in a full deployment.
-        return authenticationApi.logout(new LogoutRequest());
+        // AuthLogoutRequest tokens will be injected by the gateway/security context in a full deployment.
+        return authenticationApi.logout(new AuthLogoutRequest(), UUID.randomUUID().toString());
     }
 
     @Override
@@ -127,7 +127,7 @@ public class SecurityServiceImpl implements SecurityService {
     @Override
     public Flux<SessionDTO> getActiveSessions() {
         log.debug("Retrieving active sessions");
-        return sessionsApi.createOrGetSession()
+        return sessionsApi.createOrGetSession(UUID.randomUUID().toString())
                 .map(mapper::toSessionDTO)
                 .flux();
     }
@@ -135,7 +135,7 @@ public class SecurityServiceImpl implements SecurityService {
     @Override
     public Mono<Void> closeSession(UUID sessionId) {
         log.debug("Closing sessionId={}", sessionId);
-        return sessionsApi.invalidateSession(sessionId.toString());
+        return sessionsApi.invalidateSession(sessionId.toString(), UUID.randomUUID().toString());
     }
 
     @Override

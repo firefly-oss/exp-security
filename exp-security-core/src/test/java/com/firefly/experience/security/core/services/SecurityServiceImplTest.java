@@ -11,8 +11,8 @@ import com.firefly.experience.security.core.mappers.SecurityMapper;
 import com.firefly.experience.security.core.queries.AuthTokenDTO;
 import com.firefly.experience.security.core.queries.SessionDTO;
 import com.firefly.experience.security.core.services.impl.SecurityServiceImpl;
-import com.firefly.security.center.sdk.api.AuthenticationApi;
-import com.firefly.security.center.sdk.api.SessionsApi;
+import com.firefly.security.center.sdk.api.AuthenticationControllerApi;
+import com.firefly.security.center.sdk.api.SessionControllerApi;
 import com.firefly.security.center.sdk.model.AuthenticationResponse;
 import com.firefly.security.center.sdk.model.SessionContextDTO;
 import org.fireflyframework.web.error.exceptions.NotImplementedException;
@@ -39,7 +39,7 @@ import static org.mockito.Mockito.when;
 /**
  * Unit tests for {@link SecurityServiceImpl}.
  *
- * <p>SDK APIs ({@link AuthenticationApi}, {@link SessionsApi}) and the {@link SecurityMapper}
+ * <p>SDK APIs ({@link AuthenticationControllerApi}, {@link SessionControllerApi}) and the {@link SecurityMapper}
  * are mocked to isolate service logic and verify delegation behaviour without starting a
  * Spring context or making real HTTP calls.
  */
@@ -47,10 +47,10 @@ import static org.mockito.Mockito.when;
 class SecurityServiceImplTest {
 
     @Mock
-    private AuthenticationApi authenticationApi;
+    private AuthenticationControllerApi authenticationApi;
 
     @Mock
-    private SessionsApi sessionsApi;
+    private SessionControllerApi sessionsApi;
 
     @Mock
     private SecurityMapper mapper;
@@ -90,7 +90,7 @@ class SecurityServiceImplTest {
                     .tokenType("Bearer")
                     .build();
 
-            when(authenticationApi.login(any())).thenReturn(Mono.just(sdkResponse));
+            when(authenticationApi.login(any(), any())).thenReturn(Mono.just(sdkResponse));
             when(mapper.toAuthTokenDTO(sdkResponse)).thenReturn(expected);
 
             StepVerifier.create(service.login(command))
@@ -98,7 +98,7 @@ class SecurityServiceImplTest {
                     .verifyComplete();
 
             var captor = ArgumentCaptor.forClass(com.firefly.security.center.sdk.model.LoginRequest.class);
-            verify(authenticationApi).login(captor.capture());
+            verify(authenticationApi).login(captor.capture(), any());
             assertThat(captor.getValue().getUsername()).isEqualTo("alice@example.com");
             assertThat(captor.getValue().getPassword()).isEqualTo("s3cr3t");
         }
@@ -107,7 +107,7 @@ class SecurityServiceImplTest {
         @DisplayName("propagates error when authenticationApi.login() fails")
         void login_propagatesApiError() {
             var command = LoginCommand.builder().username("bob").password("wrong").build();
-            when(authenticationApi.login(any()))
+            when(authenticationApi.login(any(), any()))
                     .thenReturn(Mono.error(new RuntimeException("Unauthorized")));
 
             StepVerifier.create(service.login(command))
@@ -154,7 +154,7 @@ class SecurityServiceImplTest {
                     .refreshToken("refresh-new")
                     .build();
 
-            when(authenticationApi.refresh(any())).thenReturn(Mono.just(sdkResponse));
+            when(authenticationApi.refresh(any(), any())).thenReturn(Mono.just(sdkResponse));
             when(mapper.toAuthTokenDTO(sdkResponse)).thenReturn(expected);
 
             StepVerifier.create(service.refreshToken(command))
@@ -162,7 +162,7 @@ class SecurityServiceImplTest {
                     .verifyComplete();
 
             var captor = ArgumentCaptor.forClass(com.firefly.security.center.sdk.model.RefreshRequest.class);
-            verify(authenticationApi).refresh(captor.capture());
+            verify(authenticationApi).refresh(captor.capture(), any());
             assertThat(captor.getValue().getRefreshToken()).isEqualTo("refresh-old");
         }
     }
@@ -174,12 +174,12 @@ class SecurityServiceImplTest {
         @Test
         @DisplayName("delegates to authenticationApi.logout()")
         void logout_delegatesToApi() {
-            when(authenticationApi.logout(any())).thenReturn(Mono.empty());
+            when(authenticationApi.logout(any(), any())).thenReturn(Mono.empty());
 
             StepVerifier.create(service.logout())
                     .verifyComplete();
 
-            verify(authenticationApi).logout(any());
+            verify(authenticationApi).logout(any(), any());
         }
     }
 
@@ -269,7 +269,7 @@ class SecurityServiceImplTest {
                     .deviceInfo("Mozilla/5.0")
                     .build();
 
-            when(sessionsApi.createOrGetSession()).thenReturn(Mono.just(sdkSession));
+            when(sessionsApi.createOrGetSession(any())).thenReturn(Mono.just(sdkSession));
             when(mapper.toSessionDTO(sdkSession)).thenReturn(expected);
 
             StepVerifier.create(service.getActiveSessions())
@@ -286,12 +286,12 @@ class SecurityServiceImplTest {
         @DisplayName("delegates to sessionsApi.invalidateSession() with sessionId as string")
         void closeSession_delegatesToApi() {
             var sessionId = UUID.randomUUID();
-            when(sessionsApi.invalidateSession(eq(sessionId.toString()))).thenReturn(Mono.empty());
+            when(sessionsApi.invalidateSession(eq(sessionId.toString()), any())).thenReturn(Mono.empty());
 
             StepVerifier.create(service.closeSession(sessionId))
                     .verifyComplete();
 
-            verify(sessionsApi).invalidateSession(sessionId.toString());
+            verify(sessionsApi).invalidateSession(eq(sessionId.toString()), any());
         }
     }
 
