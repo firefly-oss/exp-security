@@ -1,0 +1,418 @@
+openapi: 3.0.1
+info:
+  title: OpenAPI definition
+  version: v0
+servers:
+- url: http://localhost:18080
+  description: Generated server url
+tags:
+- name: Security
+  description: "Authentication, SCA, and session management"
+paths:
+  /api/v1/experience/security/sca/verify:
+    post:
+      tags:
+      - Security
+      summary: Verify SCA
+      description: Verifies the party's response to an issued SCA challenge.
+      operationId: verifySca
+      parameters:
+      - name: X-Idempotency-Key
+        in: header
+        description: "Unique key for idempotent requests. If provided, ensures that\
+          \ identical requests with the same key will only be processed once."
+        required: false
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VerifyScaCommand"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScaVerificationResultDTO"
+  /api/v1/experience/security/sca/challenge:
+    post:
+      tags:
+      - Security
+      summary: Request SCA Challenge
+      description: Issues an SCA challenge for the requested operation type and preferred
+        mechanism.
+      operationId: requestScaChallenge
+      parameters:
+      - name: X-Idempotency-Key
+        in: header
+        description: "Unique key for idempotent requests. If provided, ensures that\
+          \ identical requests with the same key will only be processed once."
+        required: false
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RequestScaChallengeCommand"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScaChallengeDTO"
+  /api/v1/experience/security/auth/refresh:
+    post:
+      tags:
+      - Security
+      summary: Refresh Token
+      description: Exchanges a valid refresh token for a new access token.
+      operationId: refreshToken
+      parameters:
+      - name: X-Idempotency-Key
+        in: header
+        description: "Unique key for idempotent requests. If provided, ensures that\
+          \ identical requests with the same key will only be processed once."
+        required: false
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RefreshTokenCommand"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthTokenDTO"
+  /api/v1/experience/security/auth/password/reset:
+    post:
+      tags:
+      - Security
+      summary: Reset Password
+      description: Triggers a password-reset email for the account associated with
+        the given email address.
+      operationId: resetPassword
+      parameters:
+      - name: X-Idempotency-Key
+        in: header
+        description: "Unique key for idempotent requests. If provided, ensures that\
+          \ identical requests with the same key will only be processed once."
+        required: false
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PasswordResetCommand"
+        required: true
+      responses:
+        "200":
+          description: OK
+  /api/v1/experience/security/auth/password/change:
+    post:
+      tags:
+      - Security
+      summary: Change Password
+      description: Changes the authenticated party's password after verifying the
+        current one.
+      operationId: changePassword
+      parameters:
+      - name: X-Idempotency-Key
+        in: header
+        description: "Unique key for idempotent requests. If provided, ensures that\
+          \ identical requests with the same key will only be processed once."
+        required: false
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PasswordChangeCommand"
+        required: true
+      responses:
+        "200":
+          description: OK
+  /api/v1/experience/security/auth/logout:
+    post:
+      tags:
+      - Security
+      summary: Logout
+      description: Invalidates the current party session and IDP tokens.
+      operationId: logout
+      parameters:
+      - name: X-Idempotency-Key
+        in: header
+        description: "Unique key for idempotent requests. If provided, ensures that\
+          \ identical requests with the same key will only be processed once."
+        required: false
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+  /api/v1/experience/security/auth/login/biometric:
+    post:
+      tags:
+      - Security
+      summary: Biometric Login
+      description: Authenticates a party using a device-generated biometric token.
+      operationId: loginBiometric
+      parameters:
+      - name: X-Idempotency-Key
+        in: header
+        description: "Unique key for idempotent requests. If provided, ensures that\
+          \ identical requests with the same key will only be processed once."
+        required: false
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BiometricLoginCommand"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthTokenDTO"
+  /api/v1/experience/security/auth/login:
+    post:
+      tags:
+      - Security
+      summary: Login
+      description: Authenticates a party using username/password credentials and returns
+        access and refresh tokens.
+      operationId: login
+      parameters:
+      - name: X-Idempotency-Key
+        in: header
+        description: "Unique key for idempotent requests. If provided, ensures that\
+          \ identical requests with the same key will only be processed once."
+        required: false
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginCommand"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthTokenDTO"
+  /api/v1/experience/security/sessions:
+    get:
+      tags:
+      - Security
+      summary: Get Active Sessions
+      description: Returns the list of active sessions for the authenticated party.
+      operationId: getActiveSessions
+      parameters:
+      - name: X-Idempotency-Key
+        in: header
+        description: "Unique key for idempotent requests. If provided, ensures that\
+          \ identical requests with the same key will only be processed once."
+        required: false
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SessionDTO"
+  /api/v1/experience/security/activity-log:
+    get:
+      tags:
+      - Security
+      summary: Get Activity Log
+      description: Returns the security activity log for the authenticated party in
+        reverse chronological order.
+      operationId: getActivityLog
+      parameters:
+      - name: X-Idempotency-Key
+        in: header
+        description: "Unique key for idempotent requests. If provided, ensures that\
+          \ identical requests with the same key will only be processed once."
+        required: false
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ActivityLogEntryDTO"
+  /api/v1/experience/security/sessions/{sessionId}:
+    delete:
+      tags:
+      - Security
+      summary: Close Session
+      description: Invalidates a specific session by its identifier.
+      operationId: closeSession
+      parameters:
+      - name: sessionId
+        in: path
+        description: Unique identifier of the session to close
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: X-Idempotency-Key
+        in: header
+        description: "Unique key for idempotent requests. If provided, ensures that\
+          \ identical requests with the same key will only be processed once."
+        required: false
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+components:
+  schemas:
+    VerifyScaCommand:
+      type: object
+      properties:
+        operationId:
+          type: string
+          format: uuid
+        challengeId:
+          type: string
+          format: uuid
+        verificationCode:
+          type: string
+    ScaVerificationResultDTO:
+      type: object
+      properties:
+        operationId:
+          type: string
+          format: uuid
+        status:
+          type: string
+        verifiedAt:
+          type: string
+          format: date-time
+    RequestScaChallengeCommand:
+      type: object
+      properties:
+        operationType:
+          type: string
+        challengeType:
+          type: string
+    ScaChallengeDTO:
+      type: object
+      properties:
+        challengeId:
+          type: string
+          format: uuid
+        operationId:
+          type: string
+          format: uuid
+        challengeType:
+          type: string
+        expiresAt:
+          type: string
+          format: date-time
+    RefreshTokenCommand:
+      type: object
+      properties:
+        refreshToken:
+          type: string
+    AuthTokenDTO:
+      type: object
+      properties:
+        accessToken:
+          type: string
+        refreshToken:
+          type: string
+        expiresIn:
+          type: integer
+          format: int64
+        tokenType:
+          type: string
+    PasswordResetCommand:
+      type: object
+      properties:
+        email:
+          type: string
+    PasswordChangeCommand:
+      type: object
+      properties:
+        currentPassword:
+          type: string
+        newPassword:
+          type: string
+    BiometricLoginCommand:
+      type: object
+      properties:
+        biometricToken:
+          type: string
+        deviceInfo:
+          type: string
+    LoginCommand:
+      type: object
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+        deviceInfo:
+          type: string
+    SessionDTO:
+      type: object
+      properties:
+        sessionId:
+          type: string
+          format: uuid
+        deviceInfo:
+          type: string
+        ipAddress:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        lastActivityAt:
+          type: string
+          format: date-time
+    ActivityLogEntryDTO:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        action:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+        ipAddress:
+          type: string
+        deviceInfo:
+          type: string
+        result:
+          type: string
