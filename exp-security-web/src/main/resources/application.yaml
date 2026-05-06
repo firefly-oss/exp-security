@@ -28,9 +28,9 @@ server:
 api-configuration:
   domain-platform:
     security-center:
-      base-path: ${SECURITY_CENTER_URL:http://localhost:8030}
+      base-path: ${ENDPOINT_DOMAIN_SECURITY_CENTER:http://localhost:8030}
     common-sca:
-      base-path: ${SCA_URL:http://localhost:8041}
+      base-path: ${ENDPOINT_DOMAIN_COMMON_SCA:http://localhost:8041}
 
 management:
   endpoints:
