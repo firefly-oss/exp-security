@@ -5,9 +5,9 @@
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
-        <groupId>com.firefly</groupId>
+        <groupId>io.fireflysoftware</groupId>
         <artifactId>exp-security</artifactId>
-        <version>26.10.2</version>
+        <version>26.10.3</version>
     </parent>
 
     <artifactId>exp-security-web</artifactId>
@@ -17,17 +17,17 @@
         <maven.compiler.target>25</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <openapi.gen.skip>false</openapi.gen.skip>
-        <openapi.gen.mainClass>com.firefly.experience.security.web.openapi.OpenApiGenApplication</openapi.gen.mainClass>
+        <openapi.gen.mainClass>io.fireflysoftware.experience.security.web.openapi.OpenApiGenApplication</openapi.gen.mainClass>
     </properties>
 
     <dependencies>
         <!-- Internal modules -->
         <dependency>
-            <groupId>com.firefly</groupId>
+            <groupId>io.fireflysoftware</groupId>
             <artifactId>exp-security-interfaces</artifactId>
         </dependency>
         <dependency>
-            <groupId>com.firefly</groupId>
+            <groupId>io.fireflysoftware</groupId>
             <artifactId>exp-security-core</artifactId>
         </dependency>
 

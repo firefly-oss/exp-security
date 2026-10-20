@@ -5,9 +5,9 @@
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
-        <groupId>com.firefly</groupId>
+        <groupId>io.fireflysoftware</groupId>
         <artifactId>exp-security</artifactId>
-        <version>26.10.2</version>
+        <version>26.10.3</version>
     </parent>
 
     <artifactId>exp-security-core</artifactId>
@@ -21,7 +21,7 @@
     <dependencies>
         <!-- Internal modules -->
         <dependency>
-            <groupId>com.firefly</groupId>
+            <groupId>io.fireflysoftware</groupId>
             <artifactId>exp-security-infra</artifactId>
         </dependency>
 

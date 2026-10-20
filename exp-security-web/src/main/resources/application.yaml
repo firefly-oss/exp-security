@@ -25,7 +25,7 @@ firefly:
       enabled: false
 
 springdoc:
-  packages-to-scan: com.firefly.experience.security.web.controllers
+  packages-to-scan: io.fireflysoftware.experience.security.web.controllers
   paths-to-match: /api/**
   swagger-ui:
     path: /swagger-ui.html
@@ -65,7 +65,7 @@ management:
 logging:
   level:
     root: INFO
-    com.firefly.experience.security: DEBUG
+    io.fireflysoftware.experience.security: DEBUG
 
 ---
 spring:
@@ -74,7 +74,7 @@ spring:
       on-profile: dev
 logging:
   level:
-    com.firefly: DEBUG
+    io.fireflysoftware: DEBUG
 
 ---
 spring:
@@ -83,7 +83,7 @@ spring:
       on-profile: pro
 logging:
   level:
-    com.firefly: INFO
+    io.fireflysoftware: INFO
 springdoc:
   api-docs:
     enabled: false

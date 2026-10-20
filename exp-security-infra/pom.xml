@@ -5,9 +5,9 @@
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
-        <groupId>com.firefly</groupId>
+        <groupId>io.fireflysoftware</groupId>
         <artifactId>exp-security</artifactId>
-        <version>26.10.2</version>
+        <version>26.10.3</version>
     </parent>
 
     <artifactId>exp-security-infra</artifactId>
@@ -64,13 +64,13 @@
 
         <!-- Domain SDK: Security Center (authentication, sessions) -->
         <dependency>
-            <groupId>com.firefly</groupId>
+            <groupId>io.fireflysoftware</groupId>
             <artifactId>domain-core-security-center-sdk</artifactId>
         </dependency>
 
         <!-- Domain SDK: SCA (Strong Customer Authentication) -->
         <dependency>
-            <groupId>com.firefly</groupId>
+            <groupId>io.fireflysoftware</groupId>
             <artifactId>domain-common-sca-sdk</artifactId>
         </dependency>
 
