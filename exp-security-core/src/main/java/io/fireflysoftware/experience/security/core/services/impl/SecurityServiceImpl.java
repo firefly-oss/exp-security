@@ -17,15 +17,15 @@
 
 package io.fireflysoftware.experience.security.core.services.impl;
 
-import io.fireflysoftware.experience.security.core.commands.BiometricLoginCommand;
+import io.fireflysoftware.domain.common.sca.sdk.api.ScaOperationsApi;
+import io.fireflysoftware.domain.common.sca.sdk.model.GenerateChallengeRequest;
+import io.fireflysoftware.domain.common.sca.sdk.model.VerifyAttemptRequest;
 import io.fireflysoftware.experience.security.core.commands.LoginCommand;
-import io.fireflysoftware.experience.security.core.commands.PasswordChangeCommand;
 import io.fireflysoftware.experience.security.core.commands.PasswordResetCommand;
 import io.fireflysoftware.experience.security.core.commands.RefreshTokenCommand;
 import io.fireflysoftware.experience.security.core.commands.RequestScaChallengeCommand;
 import io.fireflysoftware.experience.security.core.commands.VerifyScaCommand;
 import io.fireflysoftware.experience.security.core.mappers.SecurityMapper;
-import io.fireflysoftware.experience.security.core.queries.ActivityLogEntryDTO;
 import io.fireflysoftware.experience.security.core.queries.AuthTokenDTO;
 import io.fireflysoftware.experience.security.core.queries.ScaChallengeDTO;
 import io.fireflysoftware.experience.security.core.queries.ScaVerificationResultDTO;
@@ -38,7 +38,6 @@ import io.fireflysoftware.security.center.sdk.model.LoginRequest;
 import io.fireflysoftware.security.center.sdk.model.RefreshRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.fireflyframework.web.error.exceptions.NotImplementedException;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -46,43 +45,17 @@ import reactor.core.publisher.Mono;
 import java.util.UUID;
 
 /**
- * Implementation of {@link SecurityService} that delegates to the Security Center SDK.
- *
- * <p>Currently backed by {@link AuthenticationControllerApi} and {@link SessionControllerApi} from
- * {@code domain-core-security-center-sdk}. Methods that require APIs not yet available
- * ({@code ActivityLogApi}, {@code PasswordApi}, {@code ScaOperationsApi}) signal a
- * {@link NotImplementedException} until the corresponding SDKs are generated.
- *
- * <p>TODO: Wire {@code ActivityLogApi} once the security-center spec exposes activity log endpoints.
- * <p>TODO: Wire {@code PasswordApi} once the security-center spec exposes password endpoints.
- * <p>TODO: Uncomment {@code ScaClientFactory} in {@code exp-security-infra} and wire
- *          {@code ScaOperationsApi} once {@code domain-common-sca-sdk} is generated.
+ * Delegates authentication and sessions to the security center, and SCA challenge
+ * generation and verification to the SCA operations API.
  */
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class SecurityServiceImpl implements SecurityService {
 
-    /** Error code used when biometric login is not yet supported. */
-    public static final String ERR_BIOMETRIC_LOGIN = "biometric-login";
-
-    /** Error code used when password reset is not yet supported. */
-    public static final String ERR_PASSWORD_RESET = "password-reset";
-
-    /** Error code used when password change is not yet supported. */
-    public static final String ERR_PASSWORD_CHANGE = "password-change";
-
-    /** Error code used when SCA challenge request is not yet supported. */
-    public static final String ERR_SCA_CHALLENGE_REQUEST = "sca-challenge-request";
-
-    /** Error code used when SCA verification is not yet supported. */
-    public static final String ERR_SCA_VERIFICATION = "sca-verification";
-
-    /** Error code used when activity log retrieval is not yet supported. */
-    public static final String ERR_ACTIVITY_LOG = "activity-log";
-
     private final AuthenticationControllerApi authenticationApi;
     private final SessionControllerApi sessionsApi;
+    private final ScaOperationsApi scaOperationsApi;
     private final SecurityMapper mapper;
 
     @Override
@@ -93,12 +66,6 @@ public class SecurityServiceImpl implements SecurityService {
                 .password(command.getPassword());
         return authenticationApi.login(request, UUID.randomUUID().toString())
                 .map(mapper::toAuthTokenDTO);
-    }
-
-    @Override
-    public Mono<AuthTokenDTO> loginBiometric(BiometricLoginCommand command) {
-        // TODO: Implement once domain-core-security-center exposes a biometric authentication endpoint.
-        return Mono.error(new NotImplementedException("Biometric login is not yet supported", ERR_BIOMETRIC_LOGIN));
     }
 
     @Override
@@ -113,32 +80,44 @@ public class SecurityServiceImpl implements SecurityService {
     @Override
     public Mono<Void> logout() {
         log.debug("Processing logout");
-        // AuthLogoutRequest tokens will be injected by the gateway/security context in a full deployment.
         return authenticationApi.logout(new AuthLogoutRequest(), UUID.randomUUID().toString());
     }
 
     @Override
     public Mono<Void> resetPassword(PasswordResetCommand command) {
-        // TODO: Implement once domain-core-security-center exposes a password-reset endpoint.
-        return Mono.error(new NotImplementedException("Password reset is not yet supported", ERR_PASSWORD_RESET));
-    }
-
-    @Override
-    public Mono<Void> changePassword(PasswordChangeCommand command) {
-        // TODO: Implement once domain-core-security-center exposes a password-change endpoint.
-        return Mono.error(new NotImplementedException("Password change is not yet supported", ERR_PASSWORD_CHANGE));
+        log.debug("Resetting password for account {}", command.getEmail());
+        return authenticationApi.resetPassword(command.getEmail(), UUID.randomUUID().toString());
     }
 
     @Override
     public Mono<ScaChallengeDTO> requestScaChallenge(RequestScaChallengeCommand command) {
-        // TODO: Implement once domain-common-sca-sdk is generated and ScaClientFactory is uncommented.
-        return Mono.error(new NotImplementedException("SCA challenge request is not yet supported", ERR_SCA_CHALLENGE_REQUEST));
+        log.debug("Generating SCA challenge for operation {}", command.getOperationId());
+        GenerateChallengeRequest request = new GenerateChallengeRequest()
+                .challengeType(GenerateChallengeRequest.ChallengeTypeEnum.fromValue(command.getChallengeType()));
+        return scaOperationsApi.generateChallenge(command.getOperationId(), request, UUID.randomUUID().toString())
+                .map(challenge -> ScaChallengeDTO.builder()
+                        .challengeId(challenge.getId())
+                        .operationId(challenge.getScaOperationId() != null
+                                ? challenge.getScaOperationId()
+                                : command.getOperationId())
+                        .challengeType(command.getChallengeType())
+                        .expiresAt(challenge.getExpiresAt())
+                        .build());
     }
 
     @Override
     public Mono<ScaVerificationResultDTO> verifySca(VerifyScaCommand command) {
-        // TODO: Implement once domain-common-sca-sdk is generated and ScaClientFactory is uncommented.
-        return Mono.error(new NotImplementedException("SCA verification is not yet supported", ERR_SCA_VERIFICATION));
+        log.debug("Verifying SCA attempt for operation {}", command.getOperationId());
+        VerifyAttemptRequest request = new VerifyAttemptRequest()
+                .challengeId(command.getChallengeId())
+                .verificationCode(command.getVerificationCode());
+        return scaOperationsApi.verifyAttempt(command.getOperationId(), request, UUID.randomUUID().toString())
+                .then(scaOperationsApi.getOperation(command.getOperationId(), UUID.randomUUID().toString()))
+                .map(operation -> ScaVerificationResultDTO.builder()
+                        .operationId(command.getOperationId())
+                        .status(operation.getStatus() == null ? null : operation.getStatus().getValue())
+                        .verifiedAt(operation.getLastUpdated())
+                        .build());
     }
 
     @Override
@@ -153,11 +132,5 @@ public class SecurityServiceImpl implements SecurityService {
     public Mono<Void> closeSession(UUID sessionId) {
         log.debug("Closing sessionId={}", sessionId);
         return sessionsApi.invalidateSession(sessionId.toString(), UUID.randomUUID().toString());
-    }
-
-    @Override
-    public Flux<ActivityLogEntryDTO> getActivityLog() {
-        // TODO: Implement once domain-core-security-center exposes an activity-log endpoint.
-        return Flux.error(new NotImplementedException("Activity log is not yet supported", ERR_ACTIVITY_LOG));
     }
 }

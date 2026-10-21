@@ -22,8 +22,10 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.UUID;
+
 /**
- * Command to request an SCA challenge for a specific sensitive operation.
+ * Command to generate a challenge for an SCA operation that already exists.
  */
 @Data
 @Builder
@@ -31,9 +33,9 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class RequestScaChallengeCommand {
 
-    /** Type of operation that requires SCA authorisation (e.g. {@code TRANSFER}, {@code CONTRACT_SIGN}). */
-    private String operationType;
+    /** Identifier of the SCA operation the challenge belongs to. */
+    private UUID operationId;
 
-    /** Preferred challenge delivery mechanism (e.g. {@code OTP}, {@code PUSH}, {@code BIOMETRIC}). */
+    /** Challenge mechanism the SCA service should generate ({@code OTP}, {@code PUSH}, or {@code BIOMETRIC}). */
     private String challengeType;
 }

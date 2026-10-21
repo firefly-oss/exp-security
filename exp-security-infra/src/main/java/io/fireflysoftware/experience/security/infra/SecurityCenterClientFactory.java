@@ -29,13 +29,9 @@ import org.springframework.stereotype.Component;
  *
  * <p>Current SDK ({@code domain-core-security-center-sdk}) exposes:
  * <ul>
- *   <li>{@link AuthenticationControllerApi} — login, token refresh, logout, introspect</li>
+ *   <li>{@link AuthenticationControllerApi} — login, token refresh, logout, introspect, and password reset</li>
  *   <li>{@link SessionControllerApi} — active sessions, close session, session validation</li>
  * </ul>
- *
- * <p>TODO: Once the security-center OpenAPI spec is extended with Activity Log and
- * Password endpoints, regenerate the SDK and add {@code ActivityLogApi} and
- * {@code PasswordApi} beans here.
  */
 @Component
 public class SecurityCenterClientFactory {

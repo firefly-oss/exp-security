@@ -17,14 +17,11 @@
 
 package io.fireflysoftware.experience.security.core.services;
 
-import io.fireflysoftware.experience.security.core.commands.BiometricLoginCommand;
 import io.fireflysoftware.experience.security.core.commands.LoginCommand;
-import io.fireflysoftware.experience.security.core.commands.PasswordChangeCommand;
 import io.fireflysoftware.experience.security.core.commands.PasswordResetCommand;
 import io.fireflysoftware.experience.security.core.commands.RefreshTokenCommand;
 import io.fireflysoftware.experience.security.core.commands.RequestScaChallengeCommand;
 import io.fireflysoftware.experience.security.core.commands.VerifyScaCommand;
-import io.fireflysoftware.experience.security.core.queries.ActivityLogEntryDTO;
 import io.fireflysoftware.experience.security.core.queries.AuthTokenDTO;
 import io.fireflysoftware.experience.security.core.queries.ScaChallengeDTO;
 import io.fireflysoftware.experience.security.core.queries.ScaVerificationResultDTO;
@@ -37,9 +34,8 @@ import java.util.UUID;
 /**
  * Experience-layer security service contract.
  *
- * <p>Exposes authentication, session management, password lifecycle, and SCA operations
- * as atomic reactive endpoints consumed by upstream controllers. All calls delegate to
- * downstream domain SDKs ({@code domain-core-security-center} and {@code domain-common-sca}).
+ * <p>Authentication and sessions delegate to the security center. SCA challenge and
+ * verification delegate to the SCA operations that service already exposes.
  */
 public interface SecurityService {
 
@@ -50,14 +46,6 @@ public interface SecurityService {
      * @return access and refresh tokens on successful authentication
      */
     Mono<AuthTokenDTO> login(LoginCommand command);
-
-    /**
-     * Authenticates a party using a device-generated biometric token.
-     *
-     * @param command biometric token and device metadata
-     * @return access and refresh tokens on successful authentication
-     */
-    Mono<AuthTokenDTO> loginBiometric(BiometricLoginCommand command);
 
     /**
      * Exchanges a valid refresh token for a new access token.
@@ -75,25 +63,17 @@ public interface SecurityService {
     Mono<Void> logout();
 
     /**
-     * Triggers a password-reset email for the given email address.
+     * Asks the security center to reset the password for the supplied account username.
      *
-     * @param command email associated with the account
+     * @param command account username, which is an email address when that is how the party signs in
      * @return completes empty on success
      */
     Mono<Void> resetPassword(PasswordResetCommand command);
 
     /**
-     * Changes the authenticated party's password after verifying the current one.
+     * Generates a challenge for an existing SCA operation.
      *
-     * @param command current and new password
-     * @return completes empty on success
-     */
-    Mono<Void> changePassword(PasswordChangeCommand command);
-
-    /**
-     * Requests an SCA challenge for a sensitive operation.
-     *
-     * @param command operation type and preferred challenge mechanism
+     * @param command operation id and challenge mechanism
      * @return the issued SCA challenge including its expiry
      */
     Mono<ScaChallengeDTO> requestScaChallenge(RequestScaChallengeCommand command);
@@ -102,7 +82,7 @@ public interface SecurityService {
      * Verifies the party's response to an issued SCA challenge.
      *
      * @param command operation ID, challenge ID, and verification code
-     * @return verification result including status and timestamp
+     * @return verification result including the operation status and last update time
      */
     Mono<ScaVerificationResultDTO> verifySca(VerifyScaCommand command);
 
@@ -120,11 +100,4 @@ public interface SecurityService {
      * @return completes empty on success
      */
     Mono<Void> closeSession(UUID sessionId);
-
-    /**
-     * Returns the security activity log for the authenticated party.
-     *
-     * @return stream of activity log entries in reverse chronological order
-     */
-    Flux<ActivityLogEntryDTO> getActivityLog();
 }

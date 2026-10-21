@@ -17,14 +17,11 @@
 
 package io.fireflysoftware.experience.security.web.controller;
 
-import io.fireflysoftware.experience.security.core.commands.BiometricLoginCommand;
 import io.fireflysoftware.experience.security.core.commands.LoginCommand;
-import io.fireflysoftware.experience.security.core.commands.PasswordChangeCommand;
 import io.fireflysoftware.experience.security.core.commands.PasswordResetCommand;
 import io.fireflysoftware.experience.security.core.commands.RefreshTokenCommand;
 import io.fireflysoftware.experience.security.core.commands.RequestScaChallengeCommand;
 import io.fireflysoftware.experience.security.core.commands.VerifyScaCommand;
-import io.fireflysoftware.experience.security.core.queries.ActivityLogEntryDTO;
 import io.fireflysoftware.experience.security.core.queries.AuthTokenDTO;
 import io.fireflysoftware.experience.security.core.queries.ScaChallengeDTO;
 import io.fireflysoftware.experience.security.core.queries.ScaVerificationResultDTO;
@@ -124,34 +121,6 @@ class SecurityControllerTest {
     }
 
     @Nested
-    @DisplayName("POST /auth/login/biometric")
-    class BiometricLoginTests {
-
-        @Test
-        @DisplayName("returns 200 OK with AuthTokenDTO on successful biometric login")
-        void loginBiometric_returns200WithToken() {
-            var token = AuthTokenDTO.builder()
-                    .accessToken("bio-access")
-                    .refreshToken("bio-refresh")
-                    .expiresIn(3600L)
-                    .tokenType("Bearer")
-                    .build();
-
-            when(service.loginBiometric(any())).thenReturn(Mono.just(token));
-
-            webClient.post().uri("/api/v1/experience/security/auth/login/biometric")
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .bodyValue(BiometricLoginCommand.builder().biometricToken("bio-tok").build())
-                    .exchange()
-                    .expectStatus().isOk()
-                    .expectBody(AuthTokenDTO.class)
-                    .value(body -> assertThat(body.getAccessToken()).isEqualTo("bio-access"));
-
-            verify(service).loginBiometric(any());
-        }
-    }
-
-    @Nested
     @DisplayName("POST /auth/refresh")
     class RefreshTokenTests {
 
@@ -217,25 +186,6 @@ class SecurityControllerTest {
         }
     }
 
-    @Nested
-    @DisplayName("POST /auth/password/change")
-    class ChangePasswordTests {
-
-        @Test
-        @DisplayName("returns 204 NO_CONTENT and delegates to service.changePassword()")
-        void changePassword_returns204() {
-            when(service.changePassword(any())).thenReturn(Mono.empty());
-
-            webClient.post().uri("/api/v1/experience/security/auth/password/change")
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .bodyValue(new PasswordChangeCommand("old-pass", "new-pass"))
-                    .exchange()
-                    .expectStatus().isNoContent();
-
-            verify(service).changePassword(any());
-        }
-    }
-
     // ─── SCA ──────────────────────────────────────────────────────────────────
 
     @Nested
@@ -258,7 +208,7 @@ class SecurityControllerTest {
 
             webClient.post().uri("/api/v1/experience/security/sca/challenge")
                     .contentType(MediaType.APPLICATION_JSON)
-                    .bodyValue(new RequestScaChallengeCommand("TRANSFER", "OTP"))
+                    .bodyValue(new RequestScaChallengeCommand(operationId, "OTP"))
                     .exchange()
                     .expectStatus().isCreated()
                     .expectBody(ScaChallengeDTO.class)
@@ -362,52 +312,6 @@ class SecurityControllerTest {
                     .expectStatus().isNoContent();
 
             verify(service).closeSession(sessionId);
-        }
-    }
-
-    // ─── Activity Log ─────────────────────────────────────────────────────────
-
-    @Nested
-    @DisplayName("GET /activity-log")
-    class GetActivityLogTests {
-
-        @Test
-        @DisplayName("returns 200 OK with list of ActivityLogEntryDTOs")
-        void getActivityLog_returns200WithList() {
-            var entryId = UUID.randomUUID();
-            var entry = ActivityLogEntryDTO.builder()
-                    .id(entryId)
-                    .action("LOGIN")
-                    .timestamp(LocalDateTime.now())
-                    .ipAddress("10.0.0.1")
-                    .result("SUCCESS")
-                    .build();
-
-            when(service.getActivityLog()).thenReturn(Flux.just(entry));
-
-            webClient.get().uri("/api/v1/experience/security/activity-log")
-                    .exchange()
-                    .expectStatus().isOk()
-                    .expectBodyList(ActivityLogEntryDTO.class)
-                    .value(list -> {
-                        assertThat(list).hasSize(1);
-                        assertThat(list.get(0).getId()).isEqualTo(entryId);
-                        assertThat(list.get(0).getAction()).isEqualTo("LOGIN");
-                    });
-
-            verify(service).getActivityLog();
-        }
-
-        @Test
-        @DisplayName("returns 200 OK with empty list when log is empty")
-        void getActivityLog_returns200WithEmptyList() {
-            when(service.getActivityLog()).thenReturn(Flux.empty());
-
-            webClient.get().uri("/api/v1/experience/security/activity-log")
-                    .exchange()
-                    .expectStatus().isOk()
-                    .expectBodyList(ActivityLogEntryDTO.class)
-                    .value(list -> assertThat(list).isEmpty());
         }
     }
 }

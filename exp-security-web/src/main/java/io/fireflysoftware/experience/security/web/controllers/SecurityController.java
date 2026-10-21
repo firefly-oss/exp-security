@@ -17,14 +17,11 @@
 
 package io.fireflysoftware.experience.security.web.controllers;
 
-import io.fireflysoftware.experience.security.core.commands.BiometricLoginCommand;
 import io.fireflysoftware.experience.security.core.commands.LoginCommand;
-import io.fireflysoftware.experience.security.core.commands.PasswordChangeCommand;
 import io.fireflysoftware.experience.security.core.commands.PasswordResetCommand;
 import io.fireflysoftware.experience.security.core.commands.RefreshTokenCommand;
 import io.fireflysoftware.experience.security.core.commands.RequestScaChallengeCommand;
 import io.fireflysoftware.experience.security.core.commands.VerifyScaCommand;
-import io.fireflysoftware.experience.security.core.queries.ActivityLogEntryDTO;
 import io.fireflysoftware.experience.security.core.queries.AuthTokenDTO;
 import io.fireflysoftware.experience.security.core.queries.ScaChallengeDTO;
 import io.fireflysoftware.experience.security.core.queries.ScaVerificationResultDTO;
@@ -51,8 +48,8 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * REST controller exposing atomic security endpoints for authentication, SCA, session
- * management, and activity log queries. Delegates all logic to {@link SecurityService}.
+ * REST controller for authentication, password reset, SCA, and session management.
+ * Delegates each call to an operation the security center or SCA service already exposes.
  */
 @Tag(name = "Security", description = "Authentication, SCA, and session management")
 @RestController
@@ -77,22 +74,6 @@ public class SecurityController {
                  produces = MediaType.APPLICATION_JSON_VALUE)
     public Mono<ResponseEntity<AuthTokenDTO>> login(@Valid @RequestBody LoginCommand command) {
         return service.login(command)
-                .map(ResponseEntity::ok);
-    }
-
-    /**
-     * Authenticates a party using a device-generated biometric token.
-     *
-     * @param command biometric token and device metadata
-     * @return 200 OK with access and refresh tokens on success
-     */
-    @Operation(summary = "Biometric Login",
-               description = "Authenticates a party using a device-generated biometric token.")
-    @PostMapping(value = "/auth/login/biometric",
-                 consumes = MediaType.APPLICATION_JSON_VALUE,
-                 produces = MediaType.APPLICATION_JSON_VALUE)
-    public Mono<ResponseEntity<AuthTokenDTO>> loginBiometric(@Valid @RequestBody BiometricLoginCommand command) {
-        return service.loginBiometric(command)
                 .map(ResponseEntity::ok);
     }
 
@@ -128,13 +109,13 @@ public class SecurityController {
     // ─── Password ─────────────────────────────────────────────────────────────
 
     /**
-     * Triggers a password-reset email for the account associated with the given email address.
+     * Asks the security center to reset the password for the supplied account username.
      *
-     * @param command email associated with the account
+     * @param command account username, which is an email address when that is how the party signs in
      * @return 202 ACCEPTED on success
      */
     @Operation(summary = "Reset Password",
-               description = "Triggers a password-reset email for the account associated with the given email address.")
+               description = "Resets the password for the supplied account username through the security center.")
     @PostMapping(value = "/auth/password/reset",
                  consumes = MediaType.APPLICATION_JSON_VALUE)
     public Mono<ResponseEntity<Void>> resetPassword(@Valid @RequestBody PasswordResetCommand command) {
@@ -142,31 +123,16 @@ public class SecurityController {
                 .thenReturn(ResponseEntity.accepted().<Void>build());
     }
 
-    /**
-     * Changes the authenticated party's password after verifying the current one.
-     *
-     * @param command current and new password
-     * @return 204 NO_CONTENT on success
-     */
-    @Operation(summary = "Change Password",
-               description = "Changes the authenticated party's password after verifying the current one.")
-    @PostMapping(value = "/auth/password/change",
-                 consumes = MediaType.APPLICATION_JSON_VALUE)
-    public Mono<ResponseEntity<Void>> changePassword(@Valid @RequestBody PasswordChangeCommand command) {
-        return service.changePassword(command)
-                .thenReturn(ResponseEntity.noContent().<Void>build());
-    }
-
     // ─── SCA ──────────────────────────────────────────────────────────────────
 
     /**
-     * Issues an SCA challenge for the requested operation type and preferred mechanism.
+     * Generates a challenge for an SCA operation that already exists.
      *
-     * @param command operation type and preferred challenge mechanism
+     * @param command operation id and challenge mechanism
      * @return 201 CREATED with the issued SCA challenge including its expiry
      */
     @Operation(summary = "Request SCA Challenge",
-               description = "Issues an SCA challenge for the requested operation type and preferred mechanism.")
+               description = "Generates a challenge for an existing SCA operation.")
     @PostMapping(value = "/sca/challenge",
                  consumes = MediaType.APPLICATION_JSON_VALUE,
                  produces = MediaType.APPLICATION_JSON_VALUE)
@@ -222,21 +188,5 @@ public class SecurityController {
             @PathVariable UUID sessionId) {
         return service.closeSession(sessionId)
                 .thenReturn(ResponseEntity.noContent().<Void>build());
-    }
-
-    // ─── Activity Log ─────────────────────────────────────────────────────────
-
-    /**
-     * Returns the security activity log for the authenticated party in reverse chronological order.
-     *
-     * @return 200 OK with the list of activity log entries
-     */
-    @Operation(summary = "Get Activity Log",
-               description = "Returns the security activity log for the authenticated party in reverse chronological order.")
-    @GetMapping(value = "/activity-log", produces = MediaType.APPLICATION_JSON_VALUE)
-    public Mono<ResponseEntity<List<ActivityLogEntryDTO>>> getActivityLog() {
-        return service.getActivityLog()
-                .collectList()
-                .map(ResponseEntity::ok);
     }
 }

@@ -17,9 +17,13 @@
 
 package io.fireflysoftware.experience.security.core.services;
 
-import io.fireflysoftware.experience.security.core.commands.BiometricLoginCommand;
+import io.fireflysoftware.domain.common.sca.sdk.api.ScaOperationsApi;
+import io.fireflysoftware.domain.common.sca.sdk.model.GenerateChallengeRequest;
+import io.fireflysoftware.domain.common.sca.sdk.model.SCAChallengeDTO;
+import io.fireflysoftware.domain.common.sca.sdk.model.SCAOperationDTO;
+import io.fireflysoftware.domain.common.sca.sdk.model.SagaResult;
+import io.fireflysoftware.domain.common.sca.sdk.model.VerifyAttemptRequest;
 import io.fireflysoftware.experience.security.core.commands.LoginCommand;
-import io.fireflysoftware.experience.security.core.commands.PasswordChangeCommand;
 import io.fireflysoftware.experience.security.core.commands.PasswordResetCommand;
 import io.fireflysoftware.experience.security.core.commands.RefreshTokenCommand;
 import io.fireflysoftware.experience.security.core.commands.RequestScaChallengeCommand;
@@ -32,7 +36,6 @@ import io.fireflysoftware.security.center.sdk.api.AuthenticationControllerApi;
 import io.fireflysoftware.security.center.sdk.api.SessionControllerApi;
 import io.fireflysoftware.security.center.sdk.model.AuthenticationResponse;
 import io.fireflysoftware.security.center.sdk.model.SessionContextDTO;
-import org.fireflyframework.web.error.exceptions.NotImplementedException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -55,10 +58,6 @@ import static org.mockito.Mockito.when;
 
 /**
  * Unit tests for {@link SecurityServiceImpl}.
- *
- * <p>SDK APIs ({@link AuthenticationControllerApi}, {@link SessionControllerApi}) and the {@link SecurityMapper}
- * are mocked to isolate service logic and verify delegation behaviour without starting a
- * Spring context or making real HTTP calls.
  */
 @ExtendWith(MockitoExtension.class)
 class SecurityServiceImplTest {
@@ -70,16 +69,17 @@ class SecurityServiceImplTest {
     private SessionControllerApi sessionsApi;
 
     @Mock
+    private ScaOperationsApi scaOperationsApi;
+
+    @Mock
     private SecurityMapper mapper;
 
     private SecurityServiceImpl service;
 
     @BeforeEach
     void setUp() {
-        service = new SecurityServiceImpl(authenticationApi, sessionsApi, mapper);
+        service = new SecurityServiceImpl(authenticationApi, sessionsApi, scaOperationsApi, mapper);
     }
-
-    // ─── Authentication ───────────────────────────────────────────────────────
 
     @Nested
     @DisplayName("login()")
@@ -134,24 +134,6 @@ class SecurityServiceImplTest {
     }
 
     @Nested
-    @DisplayName("loginBiometric()")
-    class BiometricLoginTests {
-
-        @Test
-        @DisplayName("emits NotImplementedException — biometric endpoint not yet available")
-        void loginBiometric_notImplemented() {
-            var command = BiometricLoginCommand.builder()
-                    .biometricToken("bio-token")
-                    .deviceInfo("iPhone 15")
-                    .build();
-
-            StepVerifier.create(service.loginBiometric(command))
-                    .expectError(NotImplementedException.class)
-                    .verify();
-        }
-    }
-
-    @Nested
     @DisplayName("refreshToken()")
     class RefreshTokenTests {
 
@@ -200,52 +182,54 @@ class SecurityServiceImplTest {
         }
     }
 
-    // ─── Password ─────────────────────────────────────────────────────────────
-
     @Nested
     @DisplayName("resetPassword()")
     class ResetPasswordTests {
 
         @Test
-        @DisplayName("emits NotImplementedException — password reset endpoint not yet available")
-        void resetPassword_notImplemented() {
-            var command = new PasswordResetCommand("alice@example.com");
+        @DisplayName("sends the account identifier to the security center reset operation")
+        void resetPassword_delegatesToSecurityCenter() {
+            when(authenticationApi.resetPassword(eq("alice@example.com"), any())).thenReturn(Mono.empty());
 
-            StepVerifier.create(service.resetPassword(command))
-                    .expectError(NotImplementedException.class)
-                    .verify();
+            StepVerifier.create(service.resetPassword(new PasswordResetCommand("alice@example.com")))
+                    .verifyComplete();
+
+            verify(authenticationApi).resetPassword(eq("alice@example.com"), any());
         }
     }
-
-    @Nested
-    @DisplayName("changePassword()")
-    class ChangePasswordTests {
-
-        @Test
-        @DisplayName("emits NotImplementedException — password change endpoint not yet available")
-        void changePassword_notImplemented() {
-            var command = new PasswordChangeCommand("old-pass", "new-pass");
-
-            StepVerifier.create(service.changePassword(command))
-                    .expectError(NotImplementedException.class)
-                    .verify();
-        }
-    }
-
-    // ─── SCA ──────────────────────────────────────────────────────────────────
 
     @Nested
     @DisplayName("requestScaChallenge()")
     class RequestScaChallengeTests {
 
         @Test
-        @DisplayName("emits NotImplementedException — SCA SDK not yet generated")
-        void requestScaChallenge_notImplemented() {
-            var command = new RequestScaChallengeCommand("TRANSFER", "OTP");
+        @DisplayName("generates a challenge for the existing SCA operation")
+        void requestScaChallenge_delegatesToSca() {
+            UUID operationId = UUID.randomUUID();
+            UUID challengeId = UUID.randomUUID();
+            LocalDateTime expiresAt = LocalDateTime.now().plusMinutes(5);
+            var command = new RequestScaChallengeCommand(operationId, "OTP");
+            var issued = new SCAChallengeDTO()
+                    .id(challengeId)
+                    .scaOperationId(operationId)
+                    .expiresAt(expiresAt);
+
+            when(scaOperationsApi.generateChallenge(eq(operationId), any(GenerateChallengeRequest.class), any()))
+                    .thenReturn(Mono.just(issued));
 
             StepVerifier.create(service.requestScaChallenge(command))
-                    .expectError(NotImplementedException.class)
-                    .verify();
+                    .assertNext(dto -> {
+                        assertThat(dto.getChallengeId()).isEqualTo(challengeId);
+                        assertThat(dto.getOperationId()).isEqualTo(operationId);
+                        assertThat(dto.getChallengeType()).isEqualTo("OTP");
+                        assertThat(dto.getExpiresAt()).isEqualTo(expiresAt);
+                    })
+                    .verifyComplete();
+
+            var captor = ArgumentCaptor.forClass(GenerateChallengeRequest.class);
+            verify(scaOperationsApi).generateChallenge(eq(operationId), captor.capture(), any());
+            assertThat(captor.getValue().getChallengeType())
+                    .isEqualTo(GenerateChallengeRequest.ChallengeTypeEnum.OTP);
         }
     }
 
@@ -254,17 +238,35 @@ class SecurityServiceImplTest {
     class VerifyScaTests {
 
         @Test
-        @DisplayName("emits NotImplementedException — SCA SDK not yet generated")
-        void verifySca_notImplemented() {
-            var command = new VerifyScaCommand(UUID.randomUUID(), UUID.randomUUID(), "123456");
+        @DisplayName("verifies the attempt and returns the operation status from SCA")
+        void verifySca_readsStatusAfterVerification() {
+            UUID operationId = UUID.randomUUID();
+            UUID challengeId = UUID.randomUUID();
+            LocalDateTime updated = LocalDateTime.now();
+            var command = new VerifyScaCommand(operationId, challengeId, "123456");
+            var operation = new SCAOperationDTO()
+                    .id(operationId)
+                    .status(SCAOperationDTO.StatusEnum.VERIFIED)
+                    .lastUpdated(updated);
+
+            when(scaOperationsApi.verifyAttempt(eq(operationId), any(VerifyAttemptRequest.class), any()))
+                    .thenReturn(Mono.just(new SagaResult().success(true).failed(false)));
+            when(scaOperationsApi.getOperation(eq(operationId), any())).thenReturn(Mono.just(operation));
 
             StepVerifier.create(service.verifySca(command))
-                    .expectError(NotImplementedException.class)
-                    .verify();
+                    .assertNext(result -> {
+                        assertThat(result.getOperationId()).isEqualTo(operationId);
+                        assertThat(result.getStatus()).isEqualTo("VERIFIED");
+                        assertThat(result.getVerifiedAt()).isEqualTo(updated);
+                    })
+                    .verifyComplete();
+
+            var captor = ArgumentCaptor.forClass(VerifyAttemptRequest.class);
+            verify(scaOperationsApi).verifyAttempt(eq(operationId), captor.capture(), any());
+            assertThat(captor.getValue().getChallengeId()).isEqualTo(challengeId);
+            assertThat(captor.getValue().getVerificationCode()).isEqualTo("123456");
         }
     }
-
-    // ─── Sessions ─────────────────────────────────────────────────────────────
 
     @Nested
     @DisplayName("getActiveSessions()")
@@ -309,21 +311,6 @@ class SecurityServiceImplTest {
                     .verifyComplete();
 
             verify(sessionsApi).invalidateSession(eq(sessionId.toString()), any());
-        }
-    }
-
-    // ─── Activity Log ─────────────────────────────────────────────────────────
-
-    @Nested
-    @DisplayName("getActivityLog()")
-    class GetActivityLogTests {
-
-        @Test
-        @DisplayName("emits NotImplementedException — activity log endpoint not yet available")
-        void getActivityLog_notImplemented() {
-            StepVerifier.create(service.getActivityLog())
-                    .expectError(NotImplementedException.class)
-                    .verify();
         }
     }
 }

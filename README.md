@@ -28,9 +28,9 @@ Developed by the Firefly Software Foundation. [dev@fireflysoftware.io](mailto:de
 
 ## Overview
 
-`exp-security` is the experience-layer service that provides all security-related capabilities consumed by digital frontends. It exposes atomic endpoints for user authentication (password-based and biometric), session lifecycle management, Strong Customer Authentication (SCA) challenge/verify flows, password reset and change, and security activity log queries.
+`exp-security` is the experience-layer service for the security operations the platform already exposes. It authenticates with username and password, refreshes and logs out sessions, resets a password through the security center, and generates or verifies an SCA challenge through the SCA service.
 
-The service acts as a security aggregator: it delegates to the `domain-core-security-center` service for authentication, session management, and activity log operations, and to `domain-common-sca` for SCA challenge issuance and verification. All endpoints are **stateless compositions** — no workflow state or Redis persistence is used.
+The service delegates authentication, password reset, and sessions to `domain-core-security-center`, and SCA challenge generation and verification to `domain-common-sca`. Endpoints with no backing operation are not part of this API. All endpoints are **stateless compositions** — no workflow state or Redis persistence is used.
 
 MapStruct is used in the `-core` module to map between command DTOs and SDK request models. Each endpoint is atomic and independent, allowing the frontend to call them in any order without relying on shared session state within this service.
 
@@ -52,7 +52,7 @@ exp-security  (port 8101)
 | Module | Purpose |
 |--------|---------|
 | `exp-security-interfaces` | (Reserved for future shared contracts) |
-| `exp-security-core` | Service interface, `SecurityServiceImpl`, MapStruct mapper, command DTOs, query DTOs (`AuthTokenDTO`, `SessionDTO`, `ScaChallengeDTO`, `ScaVerificationResultDTO`, `ActivityLogEntryDTO`) |
+| `exp-security-core` | Service interface, `SecurityServiceImpl`, MapStruct mapper, command DTOs, query DTOs (`AuthTokenDTO`, `SessionDTO`, `ScaChallengeDTO`, `ScaVerificationResultDTO`) |
 | `exp-security-infra` | `SecurityCenterClientFactory` (AuthenticationApi, SessionsApi), `ScaClientFactory` (ScaApi), and their `@ConfigurationProperties` |
 | `exp-security-web` | `SecurityController`, Spring Boot application class, `application.yaml` |
 | `exp-security-sdk` | Auto-generated reactive SDK from the OpenAPI spec |
@@ -61,11 +61,10 @@ exp-security  (port 8101)
 
 | Vertical | Endpoints | Description |
 |----------|-----------|-------------|
-| Authentication | 4 | Password login, biometric login, token refresh, logout |
-| Password | 2 | Password reset (unauthenticated) and password change (authenticated) |
-| SCA | 2 | Request an SCA challenge, verify the response |
+| Authentication | 3 | Password login, token refresh, logout |
+| Password | 1 | Password reset through the security center |
+| SCA | 2 | Generate a challenge for an existing operation, verify the response |
 | Sessions | 2 | List active sessions, close a specific session |
-| Activity Log | 1 | Retrieve the security activity log in reverse chronological order |
 
 ## API Endpoints
 
@@ -74,7 +73,6 @@ exp-security  (port 8101)
 | Method | Path | Description | Response Code |
 |--------|------|-------------|---------------|
 | `POST` | `/api/v1/experience/security/auth/login` | Authenticate with username/password; returns access and refresh tokens | `200 OK` |
-| `POST` | `/api/v1/experience/security/auth/login/biometric` | Authenticate using a device-generated biometric token | `200 OK` |
 | `POST` | `/api/v1/experience/security/auth/refresh` | Exchange a valid refresh token for a new access token | `200 OK` |
 | `POST` | `/api/v1/experience/security/auth/logout` | Invalidate the current party session and IDP tokens | `204 No Content` |
 
@@ -82,14 +80,13 @@ exp-security  (port 8101)
 
 | Method | Path | Description | Response Code |
 |--------|------|-------------|---------------|
-| `POST` | `/api/v1/experience/security/auth/password/reset` | Trigger a password-reset email for the given address | `202 Accepted` |
-| `POST` | `/api/v1/experience/security/auth/password/change` | Change the authenticated party's password | `204 No Content` |
+| `POST` | `/api/v1/experience/security/auth/password/reset` | Reset the password for the supplied account username | `202 Accepted` |
 
 ### Strong Customer Authentication (SCA)
 
 | Method | Path | Description | Response Code |
 |--------|------|-------------|---------------|
-| `POST` | `/api/v1/experience/security/sca/challenge` | Issue an SCA challenge for the requested operation and mechanism | `201 Created` |
+| `POST` | `/api/v1/experience/security/sca/challenge` | Generate a challenge for an existing SCA operation | `201 Created` |
 | `POST` | `/api/v1/experience/security/sca/verify` | Verify the party's response to an issued SCA challenge | `200 OK` |
 
 ### Sessions
@@ -99,18 +96,12 @@ exp-security  (port 8101)
 | `GET` | `/api/v1/experience/security/sessions` | List active sessions for the authenticated party | `200 OK` |
 | `DELETE` | `/api/v1/experience/security/sessions/{sessionId}` | Close a specific session by its identifier | `204 No Content` |
 
-### Activity Log
-
-| Method | Path | Description | Response Code |
-|--------|------|-------------|---------------|
-| `GET` | `/api/v1/experience/security/activity-log` | Retrieve the security activity log in reverse chronological order | `200 OK` |
-
 ## Domain SDK Dependencies
 
 | SDK | ClientFactory | APIs Used | Purpose |
 |-----|--------------|-----------|---------|
-| `domain-core-security-center-sdk` | `SecurityCenterClientFactory` | `AuthenticationApi`, `SessionsApi` | Login, token refresh, logout, active sessions, session closure |
-| `domain-common-sca-sdk` | `ScaClientFactory` | `ScaApi` | SCA challenge issuance and verification |
+| `domain-core-security-center-sdk` | `SecurityCenterClientFactory` | `AuthenticationControllerApi`, `SessionControllerApi` | Login, token refresh, logout, password reset, active sessions, session closure |
+| `domain-common-sca-sdk` | `ScaClientFactory` | `ScaOperationsApi` | SCA challenge generation and verification |
 
 ## Configuration
 
